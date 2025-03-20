@@ -1,5 +1,3 @@
-#ajouter et sauvgarder le texte
-# 
 import tkinter as tk
 import json
 
@@ -10,8 +8,8 @@ class MindMap:
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.elements = []  # Liste des éléments
-        self.selected_element = None  # Élément sélectionné
         self.lines = []  # Liste des connexions
+        self.selected_element = None  # Élément sélectionné
         self.filename = "mindmap.json"  # Fichier de sauvegarde
 
         self.context_menu = tk.Menu(root, tearoff=0)
@@ -27,7 +25,11 @@ class MindMap:
     def on_click(self, event):
         for elem in self.elements:
             if self.is_within_element(event.x, event.y, elem):
-                self.selectionner(elem)
+                if self.selected_element is None:
+                    self.selectionner(elem)
+                else:
+                    self.relier_elements(self.selected_element, elem)
+                    self.selected_element = None
                 return
         self.ajouter_element(event.x, event.y, "Nouveau texte")
 
@@ -43,6 +45,7 @@ class MindMap:
             dx = event.x - self.selected_element['x']
             dy = event.y - self.selected_element['y']
             self.deplacer_element(self.selected_element, dx, dy)
+            self.redessiner_connexions()
 
     def is_within_element(self, x, y, elem):
         return (elem['x'] - elem['width'] // 2 <= x <= elem['x'] + elem['width'] // 2 and
@@ -60,14 +63,18 @@ class MindMap:
         width = bbox[2] - bbox[0] + 20
         height = bbox[3] - bbox[1] + 10
         elem_id = self.canvas.create_rectangle(x - width // 2, y - height // 2, x + width // 2, y + height // 2, fill="blue")
-        self.elements.append({'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height})
+        elem = {'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height}
+        self.elements.append(elem)
         self.sauvegarder()
+        return elem
 
     def supprimer_element(self):
         if self.selected_element:
             self.canvas.delete(self.selected_element['id'])
             self.canvas.delete(self.selected_element['text_id'])
             self.elements.remove(self.selected_element)
+            self.lines = [line for line in self.lines if line['start'] != self.selected_element and line['end'] != self.selected_element]
+            self.redessiner_connexions()
             self.selected_element = None
             self.sauvegarder()
 
@@ -107,17 +114,37 @@ class MindMap:
         elem['y'] += dy
         self.sauvegarder()
 
+    def relier_elements(self, elem1, elem2):
+        print(f"Relier ({elem1['x']}, {elem1['y']}) et ({elem2['x']}, {elem2['y']})")
+        line_id = self.canvas.create_line(
+            elem1['x'], elem1['y'], elem2['x'], elem2['y'], 
+            fill="black", width=2, dash=(4, 2)
+        )
+        self.lines.append({'start': elem1, 'end': elem2, 'id': line_id})
+        print(f"Ligne ajoutée entre ({elem1['x']}, {elem1['y']}) et ({elem2['x']}, {elem2['y']})")
+        self.sauvegarder()
+
+    def redessiner_connexions(self):
+        for line in self.lines:
+            self.canvas.coords(line['id'], line['start']['x'], line['start']['y'], line['end']['x'], line['end']['y'])
+
     def sauvegarder(self):
+        data = {'elements': self.elements, 'lines': [{'start': self.elements.index(line['start']), 'end': self.elements.index(line['end'])} for line in self.lines]}
         with open(self.filename, "w") as f:
-            json.dump(self.elements, f)
+            json.dump(data, f)
 
     def charger(self):
         try:
             with open(self.filename, "r") as f:
                 data = json.load(f)
-                for elem in data:
-                    self.ajouter_element(elem['x'], elem['y'], elem['text'])
-        except (FileNotFoundError, json.JSONDecodeError):
+                if isinstance(data, dict):
+                    self.elements = []
+                    self.lines = []
+                    for elem in data.get('elements', []):
+                        self.ajouter_element(elem['x'], elem['y'], elem.get('text', ''))
+                    for line in data.get('lines', []):
+                        self.relier_elements(self.elements[line['start']], self.elements[line['end']])
+        except (FileNotFoundError, json.JSONDecodeError, IndexError):
             pass
 
 root = tk.Tk()
