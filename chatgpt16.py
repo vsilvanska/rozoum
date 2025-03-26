@@ -1,12 +1,14 @@
 import tkinter as tk
-import customtkinter as ctk
-from PIL import Image, ImageDraw, ImageFont, ImageTk
 import json
+import random
+from PIL import Image, ImageDraw, ImageFont
+import tkinter as tk
+from tkinter import PhotoImage
 
 class MindMap:
     def __init__(self, root):
         self.root = root
-        self.canvas = ctk.CTkCanvas(root, width=800, height=600, bg="white")
+        self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.elements = []
@@ -17,7 +19,8 @@ class MindMap:
         self.context_menu = tk.Menu(root, tearoff=0)
         self.context_menu.add_command(label="Supprimer", command=self.supprimer_element)
         self.context_menu.add_command(label="Modifier texte", command=self.ajouter_texte)
-
+        self.context_menu.add_command(label="Changer couleur", command=self.changer_couleur)
+        
         self.canvas.bind("<Button-1>", self.on_click)
         self.canvas.bind("<Button-3>", self.on_right_click)
         self.canvas.bind("<B1-Motion>", self.on_drag)
@@ -59,33 +62,32 @@ class MindMap:
         self.canvas.itemconfig(elem['id'], outline='red', width=3)
 
     def ajouter_element(self, x, y, text):
-        # Créer un rectangle pour l'élément
-        width, height = self.calculer_taille_texte(text)
+        # Créer l'élément texte avec couleur noire
+        text_id = self.canvas.create_text(x, y, text=text, fill="black", anchor="center", font=("Arial", 12))
+        
+        # Calculer la taille de l'élément pour ajuster la taille du rectangle
+        bbox = self.canvas.bbox(text_id)  # Récupère la bounding box du texte
+        width = bbox[2] - bbox[0] + 20   # Largeur de l'élément avec une petite marge
+        height = bbox[3] - bbox[1] + 10  # Hauteur de l'élément avec une petite marge
+        
+        # Créer le rectangle qui contiendra le texte
         elem_id = self.canvas.create_rectangle(x - width // 2, y - height // 2, x + width // 2, y + height // 2, fill="lightblue")
-
-        # Créer une image avec le texte
-        image = Image.new("RGB", (width, height), color="lightblue")
-        draw = ImageDraw.Draw(image)
-        font = ImageFont.load_default()  # Police par défaut
-        draw.text((width // 2, height // 2), text, font=font, fill="black", anchor="mm")
-
-        # Convertir l'image en un format compatible avec tkinter (ImageTk.PhotoImage)
-        photo = ImageTk.PhotoImage(image)
-        text_id = self.canvas.create_image(x, y, image=photo)
-
-        # Sauvegarder l'image PhotoImage pour éviter qu'elle soit collectée par le garbage collector
-        self.canvas.image = photo
-
-        self.elements.append({'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height, 'photo': photo})
+        
+        # Ajouter l'élément à la liste, avec ses propriétés et son ID de texte
+        elem = {
+            'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text,
+            'width': width, 'height': height, 'color': 'lightblue'
+        }
+        
+        # Ajouter l'élément dans la liste des éléments
+        self.elements.append(elem)
+        
+        # Sauvegarder l'état actuel dans un fichier JSON
         self.sauvegarder()
+        
+        # Vérification d'affichage du texte
+        print(f"Texte ajouté: {text} à ({x}, {y}) avec ID: {text_id}")
 
-    def calculer_taille_texte(self, text):
-        # Estimer la taille du texte avec getbbox
-        font = ImageFont.load_default()
-        bbox = font.getbbox(text)
-        width = bbox[2] - bbox[0] + 20  # Ajouter une marge
-        height = bbox[3] - bbox[1] + 10  # Ajouter une marge
-        return width, height
 
     def supprimer_element(self):
         if self.selected_element:
@@ -110,19 +112,20 @@ class MindMap:
             save_button.destroy()
             self.sauvegarder()
 
-        text_entry = ctk.CTkEntry(self.root)
+        text_entry = tk.Entry(self.root)
         text_entry.insert(0, elem['text'])
         text_entry.pack()
         text_entry.focus_set()
-        save_button = ctk.CTkButton(self.root, text="Sauvegarder", command=save_texte)
+        save_button = tk.Button(self.root, text="Sauvegarder", command=save_texte)
         save_button.pack()
 
     def redimensionner_element(self, elem):
-        width, height = self.calculer_taille_texte(elem['text'])
+        bbox = self.canvas.bbox(elem['text_id'])
+        width = bbox[2] - bbox[0] + 20
+        height = bbox[3] - bbox[1] + 10
         elem['width'] = width
         elem['height'] = height
         self.canvas.coords(elem['id'], elem['x'] - width // 2, elem['y'] - height // 2, elem['x'] + width // 2, elem['y'] + height // 2)
-        self.canvas.coords(elem['text_id'], elem['x'], elem['y'])
 
     def deplacer_element(self, elem, dx, dy):
         self.canvas.move(elem['id'], dx, dy)
@@ -138,10 +141,10 @@ class MindMap:
         self.sauvegarder()
 
     def supprimer_lignes_par_element(self, elem):
-        for line in self.lines[:]:
-            if line['start'] == elem or line['end'] == elem:
-                self.canvas.delete(line['id'])
-                self.lines.remove(line)
+        lignes_a_supprimer = [line for line in self.lines if line['start'] == elem or line['end'] == elem]
+        for line in lignes_a_supprimer:
+            self.canvas.delete(line['id'])
+            self.lines.remove(line)
 
     def mettre_a_jour_lignes(self):
         for line in self.lines:
@@ -151,20 +154,39 @@ class MindMap:
         try:
             with open(self.filename, "r") as f:
                 data = json.load(f)
+                element_map = {}  # Dictionnaire pour retrouver les éléments
+
+                # Charger les éléments
                 for elem in data.get("elements", []):
-                    self.ajouter_element(elem['x'], elem['y'], elem['text'])
+                    new_elem = self.ajouter_element(elem['x'], elem['y'], elem['text'])
+                    element_map[(elem['x'], elem['y'])] = new_elem
+
+                # Charger les connexions
                 for line in data.get("lines", []):
-                    self.relier_elements(line['start'], line['end'])
+                    start = element_map.get((line['start']['x'], line['start']['y']))
+                    end = element_map.get((line['end']['x'], line['end']['y']))
+                    if start and end:
+                        self.relier_elements(start, end)
         except (FileNotFoundError, json.JSONDecodeError):
             pass
 
     def sauvegarder(self):
-        data = {"elements": [{"x": e['x'], "y": e['y'], "text": e['text']} for e in self.elements],
+        data = {"elements": [{"x": e['x'], "y": e['y'], "text": e['text'], "color": e['color']} for e in self.elements],
                 "lines": [{"start": {"x": l['start']['x'], "y": l['start']['y']}, "end": {"x": l['end']['x'], "y": l['end']['y']}} for l in self.lines]}
         with open(self.filename, "w") as f:
             json.dump(data, f, indent=4)
 
+    def changer_couleur(self):
+        if self.selected_element:
+            color = self.generer_couleur_aleatoire()
+            self.canvas.itemconfig(self.selected_element['id'], fill=color)
+            self.selected_element['color'] = color
+            self.sauvegarder()
+
+    def generer_couleur_aleatoire(self):
+        return "#{:02x}{:02x}{:02x}".format(random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+
 if __name__ == "__main__":
-    root = ctk.CTk()
+    root = tk.Tk()
     app = MindMap(root)
     root.mainloop()

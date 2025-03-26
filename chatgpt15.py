@@ -1,12 +1,10 @@
 import tkinter as tk
-import customtkinter as ctk
-from PIL import Image, ImageDraw, ImageFont, ImageTk
 import json
 
 class MindMap:
     def __init__(self, root):
         self.root = root
-        self.canvas = ctk.CTkCanvas(root, width=800, height=600, bg="white")
+        self.canvas = tk.Canvas(root, width=800, height=600, bg="white")
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
         self.elements = []
@@ -59,33 +57,14 @@ class MindMap:
         self.canvas.itemconfig(elem['id'], outline='red', width=3)
 
     def ajouter_element(self, x, y, text):
-        # Créer un rectangle pour l'élément
-        width, height = self.calculer_taille_texte(text)
+        text_id = self.canvas.create_text(x, y, text=text, fill="black", anchor="center")
+        bbox = self.canvas.bbox(text_id)
+        width = bbox[2] - bbox[0] + 20
+        height = bbox[3] - bbox[1] + 10
         elem_id = self.canvas.create_rectangle(x - width // 2, y - height // 2, x + width // 2, y + height // 2, fill="lightblue")
-
-        # Créer une image avec le texte
-        image = Image.new("RGB", (width, height), color="lightblue")
-        draw = ImageDraw.Draw(image)
-        font = ImageFont.load_default()  # Police par défaut
-        draw.text((width // 2, height // 2), text, font=font, fill="black", anchor="mm")
-
-        # Convertir l'image en un format compatible avec tkinter (ImageTk.PhotoImage)
-        photo = ImageTk.PhotoImage(image)
-        text_id = self.canvas.create_image(x, y, image=photo)
-
-        # Sauvegarder l'image PhotoImage pour éviter qu'elle soit collectée par le garbage collector
-        self.canvas.image = photo
-
-        self.elements.append({'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height, 'photo': photo})
+        self.elements.append({'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height})
         self.sauvegarder()
-
-    def calculer_taille_texte(self, text):
-        # Estimer la taille du texte avec getbbox
-        font = ImageFont.load_default()
-        bbox = font.getbbox(text)
-        width = bbox[2] - bbox[0] + 20  # Ajouter une marge
-        height = bbox[3] - bbox[1] + 10  # Ajouter une marge
-        return width, height
+        return {'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height}
 
     def supprimer_element(self):
         if self.selected_element:
@@ -110,19 +89,20 @@ class MindMap:
             save_button.destroy()
             self.sauvegarder()
 
-        text_entry = ctk.CTkEntry(self.root)
+        text_entry = tk.Entry(self.root)
         text_entry.insert(0, elem['text'])
         text_entry.pack()
         text_entry.focus_set()
-        save_button = ctk.CTkButton(self.root, text="Sauvegarder", command=save_texte)
+        save_button = tk.Button(self.root, text="Sauvegarder", command=save_texte)
         save_button.pack()
 
     def redimensionner_element(self, elem):
-        width, height = self.calculer_taille_texte(elem['text'])
+        bbox = self.canvas.bbox(elem['text_id'])
+        width = bbox[2] - bbox[0] + 20
+        height = bbox[3] - bbox[1] + 10
         elem['width'] = width
         elem['height'] = height
         self.canvas.coords(elem['id'], elem['x'] - width // 2, elem['y'] - height // 2, elem['x'] + width // 2, elem['y'] + height // 2)
-        self.canvas.coords(elem['text_id'], elem['x'], elem['y'])
 
     def deplacer_element(self, elem, dx, dy):
         self.canvas.move(elem['id'], dx, dy)
@@ -138,10 +118,10 @@ class MindMap:
         self.sauvegarder()
 
     def supprimer_lignes_par_element(self, elem):
-        for line in self.lines[:]:
-            if line['start'] == elem or line['end'] == elem:
-                self.canvas.delete(line['id'])
-                self.lines.remove(line)
+        lignes_a_supprimer = [line for line in self.lines if line['start'] == elem or line['end'] == elem]
+        for line in lignes_a_supprimer:
+            self.canvas.delete(line['id'])
+            self.lines.remove(line)
 
     def mettre_a_jour_lignes(self):
         for line in self.lines:
@@ -151,10 +131,19 @@ class MindMap:
         try:
             with open(self.filename, "r") as f:
                 data = json.load(f)
+                element_map = {}  # Dictionnaire pour retrouver les éléments
+
+                # Charger les éléments
                 for elem in data.get("elements", []):
-                    self.ajouter_element(elem['x'], elem['y'], elem['text'])
+                    new_elem = self.ajouter_element(elem['x'], elem['y'], elem['text'])
+                    element_map[(elem['x'], elem['y'])] = new_elem
+
+                # Charger les connexions
                 for line in data.get("lines", []):
-                    self.relier_elements(line['start'], line['end'])
+                    start = element_map.get((line['start']['x'], line['start']['y']))
+                    end = element_map.get((line['end']['x'], line['end']['y']))
+                    if start and end:
+                        self.relier_elements(start, end)
         except (FileNotFoundError, json.JSONDecodeError):
             pass
 
@@ -165,6 +154,6 @@ class MindMap:
             json.dump(data, f, indent=4)
 
 if __name__ == "__main__":
-    root = ctk.CTk()
+    root = tk.Tk()
     app = MindMap(root)
     root.mainloop()
