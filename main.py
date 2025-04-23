@@ -140,14 +140,23 @@ class MindMap:
         for line in self.lines:
             self.canvas.coords(line['id'], line['start']['x'], line['start']['y'], line['end']['x'], line['end']['y'])
 
-    # Supprime un élément sélectionné
+    # Supprime un élément sélectionné et les lignes associées
     def supprimer_element(self):
         if self.selected_element:
+            lignes_a_supprimer = [
+                line for line in self.lines 
+                if line['start'] == self.selected_element or line['end'] == self.selected_element
+            ]
+            for line in lignes_a_supprimer:
+                self.canvas.delete(line['id'])
+                self.lines.remove(line)
+
             self.canvas.delete(self.selected_element['id'])
             self.canvas.delete(self.selected_element['text_id'])
             self.elements.remove(self.selected_element)
             self.selected_element = None
             self.sauvegarder()
+
 
     # Charge la mind map depuis le fichier JSON
     def charger(self):
