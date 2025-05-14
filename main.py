@@ -346,7 +346,7 @@ if __name__ == "__main__":
 
     root = ctk.CTk()
     root.geometry("1200x800")  # Taille de départ (modifiable)
-    root.minsize(1680, 1050)     # Taille minimale
+    root.minsize(2880, 1800)     # Taille minimale
 
     # L'utilisateur pourra redimensionner librement avec la souris
     root.resizable(True, True)
