@@ -2,6 +2,7 @@ import tkinter as tk
 import customtkinter as ctk
 import json
 import os
+from PIL import Image
 
 # Classe principale de la carte mentale
 class MindMap:
@@ -69,20 +70,11 @@ class MindMap:
 
     def ajouter_element(self, x, y, text):
         width, height = self.calculer_taille_texte(text)
-        elem_id = self.canvas.create_rectangle(
-            x - width//2, y - height//2, x + width//2, y + height//2,
-            fill="#e3f2fd", outline="#2196f3", width=2  # Bleu clair, bord bleu officiel
-        )
-        text_id = self.canvas.create_text(
-            x, y, text=text, fill="#1a237e", font=("Arial", 12, "bold")  # Bleu très foncé
-        )
-        self.elements.append({
-            'x': x, 'y': y, 'id': elem_id, 'text_id': text_id,
-            'text': text, 'width': width, 'height': height
-        })
+        elem_id = self.canvas.create_rectangle(x - width//2, y - height//2, x + width//2, y + height//2, fill="lightblue")
+        text_id = self.canvas.create_text(x, y, text=text, fill="black")
+        self.elements.append({'x': x, 'y': y, 'id': elem_id, 'text_id': text_id, 'text': text, 'width': width, 'height': height})
         self.canvas.tag_lower(elem_id)
         self.sauvegarder()
-
 
     def calculer_taille_texte(self, text):
         lines = text.split('\n')
@@ -101,16 +93,11 @@ class MindMap:
                 save_button.destroy()
                 self.sauvegarder()
 
-            text_entry = tk.Text(self.root, height=4, width=30, font=("Arial", 12))
+            text_entry = tk.Text(self.root, height=2, width=20)
             text_entry.insert("1.0", self.selected_element['text'])
-            text_entry.pack(pady=10)
-
-            save_button = ctk.CTkButton(
-                self.root, text="💾 Sauvegarder", command=save_texte,
-                width=150, height=35, corner_radius=10,
-                fg_color="#4caf50", hover_color="#45a049"
-            )
-            save_button.pack(pady=5)
+            text_entry.pack()
+            save_button = ctk.CTkButton(self.root, text="Sauvegarder", command=save_texte)
+            save_button.pack()
 
     def redimensionner_element(self, elem):
         width, height = self.calculer_taille_texte(elem['text'])
@@ -132,14 +119,10 @@ class MindMap:
 
     def relier_elements(self, elem1, elem2):
         if elem1 != elem2:
-            line_id = self.canvas.create_line(
-                elem1['x'], elem1['y'], elem2['x'], elem2['y'],
-                fill="#455a64", width=2, smooth=True  # Gris-bleu élégant
-            )
+            line_id = self.canvas.create_line(elem1['x'], elem1['y'], elem2['x'], elem2['y'], fill="black", width=2)
             self.lines.append({'start': elem1, 'end': elem2, 'id': line_id})
             self.canvas.tag_lower(line_id)
             self.sauvegarder()
-
 
     def mettre_a_jour_lignes(self):
         for line in self.lines:
@@ -189,6 +172,8 @@ class MindMap:
         with open(self.filename, "w") as f:
             json.dump(data, f, indent=4)
 
+# Le reste de ton code reste inchangé.
+
 
 
 class Accueil:
@@ -197,89 +182,35 @@ class Accueil:
         self.root.geometry("600x600")
         self.root.title("Accueil - Cartes mentales")
 
-        ctk.set_appearance_mode("light")  # Mode par défaut (clair)
+        ctk.set_appearance_mode("light")  # mode par défaut
         ctk.set_default_color_theme("blue")
 
-        # Main frame for content
-        self.main_frame = ctk.CTkFrame(root, corner_radius=25, fg_color="#f5f5f5")  # Gris clair
-        self.main_frame.pack(padx=30, pady=30, fill="both", expand=True)
+        self.main_frame = ctk.CTkFrame(root, corner_radius=15)
+        self.main_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-        # Header frame for title
-        self.header = ctk.CTkFrame(self.main_frame, fg_color="#e0e0e0", corner_radius=15)  # Gris léger
-        self.header.pack(fill="x", pady=20)
+        self.header = ctk.CTkFrame(self.main_frame, fg_color="#e6f0ff")
+        self.header.pack(fill="x", pady=10)
 
-        # Title label with a formal color
-        self.title = ctk.CTkLabel(self.header, text="Bienvenue dans l'application de cartes mentales", font=("Arial", 24, "bold"), text_color="#333333")  # Gris foncé
+        self.title = ctk.CTkLabel(self.header, text="Bienvenue dans l'application de cartes mentales", font=("Arial", 22))
         self.title.pack(pady=10)
 
-        # Button to create a new mind map with professional colors
-        self.bouton_nouveau = ctk.CTkButton(self.main_frame, text="🌟 Créer une nouvelle mind map", command=self.afficher_creation_fichier,
-                                            width=250, height=45, corner_radius=12, hover_color="#4b8df8", fg_color="#5c85d6")  # Bleu plus professionnel
-        self.bouton_nouveau.pack(pady=10)
+        self.filename_entry = ctk.CTkEntry(self.main_frame, placeholder_text="Nom de la carte (sans .json)", height=40)
+        self.filename_entry.pack(pady=10, padx=20, fill="x")
 
-        # Button to show existing files with a different, muted color
-        self.bouton_fichiers = ctk.CTkButton(self.main_frame, text="📁 Les fichiers existants", command=self.afficher_fichiers,
-                                             width=250, height=45, corner_radius=12, hover_color="#58a64d", fg_color="#6dbf6a")  # Vert olive
+        self.bouton_nouveau = ctk.CTkButton(self.main_frame, text="🌟 Créer une nouvelle mind map", command=self.creer)
+        self.bouton_nouveau.pack(pady=5)
+
+        self.switch_theme = ctk.CTkSwitch(self.main_frame, text="Mode sombre", command=self.toggle_theme)
+        self.switch_theme.pack(pady=10)
+
+        self.bouton_fichiers = ctk.CTkButton(self.main_frame, text="📁 Les fichiers existants", command=self.afficher_fichiers)
         self.bouton_fichiers.pack(pady=10)
 
-        # Frame for the file name entry, initially hidden
-        self.filename_frame = ctk.CTkFrame(self.main_frame)
-        self.filename_frame.pack(pady=10, fill="x")
-        self.filename_entry = ctk.CTkEntry(self.filename_frame, placeholder_text="Nom de la carte (sans .json)", height=40, width=280, corner_radius=10)
-        self.filename_entry.pack(padx=20, fill="x")
+        self.fichiers_frame = None
 
-        # Button for creating a new mind map with a professional style
-        self.bouton_creer = ctk.CTkButton(self.filename_frame, text="Créer", command=self.creer, width=200, height=40, corner_radius=10, fg_color="#4caf50", hover_color="#45a049")  # Vert classique
-        self.bouton_creer.pack(pady=10)
-
-        # Frame for displaying existing files, initially hidden
-        self.fichiers_frame = ctk.CTkFrame(self.main_frame)
-        self.fichiers_frame.pack(pady=10, fill="x")
-
-    def afficher_creation_fichier(self):
-        """Afficher les champs pour entrer le nom du fichier quand l'utilisateur veut créer un nouveau fichier."""
-        # Masquer les autres éléments et afficher le champ pour créer un fichier
-        self.fichiers_frame.pack_forget()  # Masque les fichiers existants
-        self.filename_frame.pack(fill="x", pady=20)  # Affiche le champ de création de fichier
-
-    def afficher_fichiers(self):
-        """Afficher la liste des fichiers existants."""
-        # Masquer le champ de création de fichier et afficher les fichiers existants
-        self.filename_frame.pack_forget()  # Masque le champ pour créer un fichier
-        self.fichiers_frame.pack(fill="x", pady=20)  # Affiche la liste des fichiers existants
-
-        # Vider la frame des fichiers existants avant de la remplir
-        for widget in self.fichiers_frame.winfo_children():
-            widget.destroy()
-
-        fichiers = [f for f in os.listdir() if f.endswith(".json")]
-
-        if not fichiers:
-            msg = ctk.CTkLabel(self.fichiers_frame, text="Aucun fichier trouvé.", font=("Arial", 14), text_color="#333333")
-            msg.pack(pady=10)
-            return
-
-        # Dynamically add each file to the frame with professional style
-        for fichier in fichiers:
-            ligne = ctk.CTkFrame(self.fichiers_frame)
-            ligne.pack(fill="x", padx=20, pady=8)
-
-            # File name label with a muted color
-            nom = ctk.CTkLabel(ligne, text=fichier, anchor="w", font=("Arial", 14), text_color="#4b4b4b")  # Gris clair
-            nom.pack(side="left", expand=True)
-
-            # Buttons for modifying, renaming, and deleting files with formal colors
-            bouton_modifier = ctk.CTkButton(ligne, text="🖊️ Modifier", width=90, corner_radius=10, fg_color="#4b8df8", hover_color="#4b8df8",
-                                            command=lambda f=fichier: self.ouvrir_mindmap(f))
-            bouton_modifier.pack(side="right", padx=8)
-
-            bouton_renommer = ctk.CTkButton(ligne, text="📝 Renommer", width=90, corner_radius=10, fg_color="#4caf50", hover_color="#45a049",
-                                            command=lambda f=fichier: self.renommer_fichier(f))
-            bouton_renommer.pack(side="right", padx=8)
-
-            bouton_supprimer = ctk.CTkButton(ligne, text="🗑️ Supprimer", width=90, corner_radius=10, fg_color="red", hover_color="#cc1f1f",
-                                             command=lambda f=fichier: self.supprimer_fichier(f))
-            bouton_supprimer.pack(side="right", padx=8)
+    def toggle_theme(self):
+        current = ctk.get_appearance_mode()
+        ctk.set_appearance_mode("dark" if current == "light" else "light")
 
     def creer(self):
         filename = self.filename_entry.get().strip()
@@ -289,6 +220,40 @@ class Accueil:
                 with open(fichier, "w") as f:
                     json.dump({"elements": [], "lines": []}, f)
             self.ouvrir_mindmap(fichier)
+
+    def afficher_fichiers(self):
+        if self.fichiers_frame:
+            self.fichiers_frame.destroy()
+
+        self.fichiers_frame = ctk.CTkScrollableFrame(self.main_frame, height=300)
+        self.fichiers_frame.pack(pady=10, fill="both", expand=True)
+
+        fichiers = [f for f in os.listdir() if f.endswith(".json")]
+
+        if not fichiers:
+            msg = ctk.CTkLabel(self.fichiers_frame, text="Aucun fichier trouvé.")
+            msg.pack(pady=10)
+            return
+
+        for fichier in fichiers:
+            ligne = ctk.CTkFrame(self.fichiers_frame)
+            ligne.pack(fill="x", padx=10, pady=5)
+
+            nom = ctk.CTkLabel(ligne, text=fichier, anchor="w")
+            nom.pack(side="left", expand=True)
+
+            bouton_modifier = ctk.CTkButton(ligne, text="🖊️ Modifier", width=90,
+                                            command=lambda f=fichier: self.ouvrir_mindmap(f))
+            bouton_modifier.pack(side="right", padx=2)
+
+            bouton_renommer = ctk.CTkButton(ligne, text="📝 Renommer", width=90,
+                                            command=lambda f=fichier: self.renommer_fichier(f))
+            bouton_renommer.pack(side="right", padx=2)
+
+            bouton_supprimer = ctk.CTkButton(ligne, text="🗑️ Supprimer", width=90,
+                                             fg_color="red", hover_color="#aa0000",
+                                             command=lambda f=fichier: self.supprimer_fichier(f))
+            bouton_supprimer.pack(side="right", padx=2)
 
     def supprimer_fichier(self, fichier):
         if os.path.exists(fichier):
@@ -300,10 +265,10 @@ class Accueil:
         popup.title("Renommer le fichier")
         popup.geometry("300x150")
 
-        label = ctk.CTkLabel(popup, text="Nouveau nom (sans .json):", font=("Arial", 14), text_color="#333333")
+        label = ctk.CTkLabel(popup, text="Nouveau nom (sans .json):")
         label.pack(pady=10)
 
-        entry = ctk.CTkEntry(popup, font=("Arial", 12), height=35)
+        entry = ctk.CTkEntry(popup)
         entry.insert(0, fichier.replace(".json", ""))
         entry.pack(pady=5)
 
@@ -316,14 +281,13 @@ class Accueil:
                     popup.destroy()
                     self.afficher_fichiers()
 
-        bouton_valider = ctk.CTkButton(popup, text="Valider", command=valider, width=150, height=35, corner_radius=10, fg_color="#4caf50", hover_color="#45a049")
+        bouton_valider = ctk.CTkButton(popup, text="Valider", command=valider)
         bouton_valider.pack(pady=10)
 
     def ouvrir_mindmap(self, fichier):
         self.main_frame.destroy()
         self.root.geometry("900x600")
-        MindMap(self.root, fichier)
-
+        MindMap(self.root, fichier)  # Assure-toi que la classe MindMap accepte le paramètre "fichier"
 
 if __name__ == "__main__":
     root = ctk.CTk()
