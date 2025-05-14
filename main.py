@@ -341,6 +341,17 @@ class Accueil:
 
 
 if __name__ == "__main__":
+    ctk.set_appearance_mode("System")
+    ctk.set_default_color_theme("blue")
+
     root = ctk.CTk()
-    app = Accueil(root)
+    root.geometry("1200x800")  # Taille de départ (modifiable)
+    root.minsize(1680, 1050)     # Taille minimale
+
+    # L'utilisateur pourra redimensionner librement avec la souris
+    root.resizable(True, True)
+
+    app = Accueil(root)  # Créer l'instance d'Accueil
+
     root.mainloop()
+
