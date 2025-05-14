@@ -13,6 +13,14 @@ class MindMap:
         self.scrollable_frame = ctk.CTkScrollableFrame(root, width=800, height=600)
         self.scrollable_frame.pack(fill=tk.BOTH, expand=True)
 
+        self.bouton_retour = ctk.CTkButton(
+            self.scrollable_frame, text="⬅️ Retour au menu",
+            command=self.retour_accueil, fg_color="#d32f2f", hover_color="#b71c1c",  # Rouge élégant
+            width=160, height=35, corner_radius=10
+        )
+        self.bouton_retour.pack(pady=10)
+
+
         self.canvas = ctk.CTkCanvas(self.scrollable_frame, bg="white", width=2000, height=2000)  # Large canvas pour permettre le défilement
         self.canvas.pack(fill=tk.BOTH, expand=True)
 
@@ -188,6 +196,13 @@ class MindMap:
         }
         with open(self.filename, "w") as f:
             json.dump(data, f, indent=4)
+
+    def retour_accueil(self):
+        # Détruire tous les widgets de la fenêtre
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        # Recharger l'accueil
+        Accueil(self.root)
 
 
 
