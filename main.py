@@ -228,12 +228,12 @@ class Accueil:
         self.title.pack(pady=10)
 
         # Button to create a new mind map with professional colors
-        self.bouton_nouveau = ctk.CTkButton(self.main_frame, text="🌟 Créer une nouvelle mind map", command=self.afficher_creation_fichier,
+        self.bouton_nouveau = ctk.CTkButton(self.main_frame, text="Créer une nouvelle mind map", command=self.afficher_creation_fichier,
                                             width=250, height=45, corner_radius=12, hover_color="#4b8df8", fg_color="#5c85d6")  # Bleu plus professionnel
         self.bouton_nouveau.pack(pady=10)
 
         # Button to show existing files with a different, muted color
-        self.bouton_fichiers = ctk.CTkButton(self.main_frame, text="📁 Les fichiers existants", command=self.afficher_fichiers,
+        self.bouton_fichiers = ctk.CTkButton(self.main_frame, text="Les fichiers existants", command=self.afficher_fichiers,
                                              width=250, height=45, corner_radius=12, hover_color="#58a64d", fg_color="#6dbf6a")  # Vert olive
         self.bouton_fichiers.pack(pady=10)
 
@@ -284,15 +284,15 @@ class Accueil:
             nom.pack(side="left", expand=True)
 
             # Buttons for modifying, renaming, and deleting files with formal colors
-            bouton_modifier = ctk.CTkButton(ligne, text="🖊️ Modifier", width=90, corner_radius=10, fg_color="#4b8df8", hover_color="#4b8df8",
+            bouton_modifier = ctk.CTkButton(ligne, text="Modifier", width=90, corner_radius=10, fg_color="#4b8df8", hover_color="#4b8df8",
                                             command=lambda f=fichier: self.ouvrir_mindmap(f))
             bouton_modifier.pack(side="right", padx=8)
 
-            bouton_renommer = ctk.CTkButton(ligne, text="📝 Renommer", width=90, corner_radius=10, fg_color="#4caf50", hover_color="#45a049",
+            bouton_renommer = ctk.CTkButton(ligne, text="Renommer", width=90, corner_radius=10, fg_color="#4caf50", hover_color="#45a049",
                                             command=lambda f=fichier: self.renommer_fichier(f))
             bouton_renommer.pack(side="right", padx=8)
 
-            bouton_supprimer = ctk.CTkButton(ligne, text="🗑️ Supprimer", width=90, corner_radius=10, fg_color="red", hover_color="#cc1f1f",
+            bouton_supprimer = ctk.CTkButton(ligne, text="Supprimer", width=90, corner_radius=10, fg_color="red", hover_color="#cc1f1f",
                                              command=lambda f=fichier: self.supprimer_fichier(f))
             bouton_supprimer.pack(side="right", padx=8)
 
